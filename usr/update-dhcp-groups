@@ -1,0 +1,97 @@
+#!/bin/sh
+# Update configuration files for all DHCP groups.
+# Author:   Teodor MICU <mteodor@gmail.com>
+# Revision: July 04, 2012
+#
+# Location: /usr/local/sbin/
+
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+set -eu
+
+DESCRIPTION="Update DHCP groups"
+CACHEDIR="/var/cache/dhcp"
+CFGFILE="/etc/dhcp/hosts.list"
+
+if [ ! -f "$CFGFILE" ]; then
+	echo "E: file '$CFGFILE' does not exist.. execution interrupted." >&2
+	exit 254
+fi
+
+
+WORKFILE="$(mktemp)"
+
+on_exit()
+{
+	[ -f $WORKFILE ] && rm -f $WORKFILE
+}
+trap on_exit EXIT INT QUIT TERM
+
+#Group | Host | MAC address | ..
+LANG=C
+while read LINE; do
+	echo "$LINE" | grep -q "^\s*#" && continue
+	echo "$LINE" | grep -q "^\s*$" && continue
+
+	GROUP=$(echo "$LINE" | cut '-d|' -f1)
+	if [ -z "$GROUP" ]; then
+		echo "E: empty group name on line '$LINE'.. record ignored" >&2
+		continue
+	elif echo "$GROUP" | grep -q "[^A-Z]"; then
+		echo "E: invalid group name '$GROUP'.. record ignored" >&2
+		continue
+	fi
+
+	HOST=$(echo "$LINE" | cut '-d|' -f2)
+	if IPADDR=$(getent hosts $HOST); then
+		IPADDR=$(echo "$IPADDR" | awk '{ print $1 }')
+	else
+		echo "E: host '${HOST}' not found.. record ignored" >&2
+		continue
+	fi
+
+	MACADDR=$(echo "$LINE" | cut '-d|' -f3)
+	if [ -z "$MACADDR" ]; then
+		echo "E: empty MAC address for host '$HOST'.. record ignored" >&2
+		continue
+	elif [ $(echo -n "$MACADDR" | wc -c) -ne 17 ]; then
+		echo "E: invalid MAC address for host '$HOST'.. record ignored" >&2
+		continue
+	elif [ $(echo "$MACADDR" | awk -F: '{ print NF }') -ne 6 ]; then
+		echo "E: invalid MAC address for host '$HOST'.. record ignored" >&2
+		continue
+	fi
+
+	echo "$GROUP|$HOST|$MACADDR|$IPADDR"
+done < $CFGFILE | sort > $WORKFILE
+sync
+
+#GROUP|HOST|MACADDR|IPADDR
+# mkGroup GROUP
+mkGroup()
+{
+	GROUP="$1"
+	(
+		echo "# DHCP group: ${GROUP}"
+		echo
+		echo "group {"
+		echo "  use-host-decl-names on;"
+		echo
+		grep "^${GROUP}|" $WORKFILE | awk '-F|' '{
+			printf ("  host %s {\n",$2);
+			printf ("    hardware ethernet %s;\n",$3);
+			printf ("    fixed-address %s;\n  }\n",$4);
+		}'
+		echo "}"
+	) > ${GROUP}.conf
+	return 0
+}
+
+[ -d "$CACHEDIR" ] || mkdir $CACHEDIR
+cd $CACHEDIR && rm -f *.conf
+echo -n "${DESCRIPTION}:"
+for GROUP in $(cut '-d|' -f1 $WORKFILE | sort -u); do
+	mkGroup $GROUP
+	echo -n " $GROUP"
+done
+echo "."
+:
