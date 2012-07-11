@@ -9,7 +9,7 @@ Instalare pachete
 
     HOSTu:~# apt remove chrony ntp ntpdate+
 
-Notă: **apt** este un alias pentru `apt-get` dar poți utiliza `aptitude` la fel de bine.
+Notă: **apt** este un alias pentru `apt-get --purge` dar poți utiliza `aptitude` la fel de bine.
 
 
 Configurare serviciu
