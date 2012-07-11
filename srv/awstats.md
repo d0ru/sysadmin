@@ -27,13 +27,13 @@ Disable default _awstats_ example configuration and move data to `/srv/awstats`.
 
     HOSTu:~# cd /etc/awstats/ && mkdir -v conf.d
     HOSTu:~# mv -v awstats.conf awstats.conf_6.9.5~dfsg-5
-    HOSTu:~# sed -i "s%\sawstats$%%" /usr/share/awstats/tools/update.sh
+    HOSTu:~# sed "s%\sawstats$%%" -i /usr/share/awstats/tools/update.sh
     
     HOSTu:~# mv -v /var/lib/awstats /srv/ && ln -s /srv/awstats /var/lib/awstats
 
 Disable automatic build of _awstats_ static pages.
 
-    HOSTu:~# sed -i 's%^\(AWSTATS_ENABLE_BUILDSTATICPAGES\)=.*$%\1="no"%' /etc/default/awstats
+    HOSTu:~# sed 's%^\(AWSTATS_ENABLE_BUILDSTATICPAGES\)=.*$%\1="no"%' -i /etc/default/awstats
 
 Add a virtual web site for _awstats_ service that contains:
 
@@ -54,7 +54,7 @@ Configure _apache2_ to allow user `www-data` access to all logs:
     HOSTu:~# chmod o+x /var/log/apache2
     HOSTu:~# chmod a+r /var/log/apache2/access_*log
     
-    HOSTu:~# sed -i "s%create 640%create 644%" /etc/logrotate.d/apache2
+    HOSTu:~# sed "s%create 640%create 644%" -i /etc/logrotate.d/apache2
 
 ### Add a new web site to AWStats monitoring
 
@@ -67,24 +67,24 @@ Configure _apache2_ to allow user `www-data` access to all logs:
     cp -va awstats.conf_6.9.5~dfsg-5 $CFGFILE
     ln -s "conf.d/${WEBSITE//./-}.conf" "awstats.${WEBSITE/%.*/}.conf"
     
-    sed -i "s%^\(LogFile=\"/var/log/apache2/access\).*$%\1_${WEBSITE//./-}.log\"%" $CFGFILE
-    sed -i 's%^LogFormat=.*$%LogFormat=1%' $CFGFILE
-    sed -i 's%^AllowFullYearView=.*$%AllowFullYearView=3%' $CFGFILE
-    sed -i 's%^SkipHosts=.*$%SkipHosts="::1 127.0.0.1 REGEX[^10\\.]"%' $CFGFILE
-    sed -i 's%^SkipFiles=.*$%SkipFiles="REGEX[^\/awstats]"%' $CFGFILE
+    sed "s%^\(LogFile=\"/var/log/apache2/access\).*$%\1_${WEBSITE//./-}.log\"%" -i $CFGFILE
+    sed 's%^LogFormat=.*$%LogFormat=1%' -i $CFGFILE
+    sed 's%^AllowFullYearView=.*$%AllowFullYearView=3%' -i $CFGFILE
+    sed 's%^SkipHosts=.*$%SkipHosts="::1 127.0.0.1 REGEX[^10\\.]"%' -i $CFGFILE
+    sed 's%^SkipFiles=.*$%SkipFiles="REGEX[^\/awstats]"%' -i $CFGFILE
     
-    sed -i 's%^\(LevelForWormsDetection\)=[0-9]*%\1=2%' $CFGFILE
-    sed -i 's%^UseFramesWhenCGI=.*$%UseFramesWhenCGI=0%' $CFGFILE
-    sed -i 's%^ShowWormsStats=.*$%ShowWormsStats=HBL%' $CFGFILE
-    sed -i 's%^ShowMiscStats=.*$%ShowMiscStats=anjdfrqwp%' $CFGFILE
+    sed 's%^\(LevelForWormsDetection\)=[0-9]*%\1=2%' -i $CFGFILE
+    sed 's%^UseFramesWhenCGI=.*$%UseFramesWhenCGI=0%' -i $CFGFILE
+    sed 's%^ShowWormsStats=.*$%ShowWormsStats=HBL%' -i $CFGFILE
+    sed 's%^ShowMiscStats=.*$%ShowMiscStats=anjdfrqwp%' -i $CFGFILE
     
-    sed -i 's%^#*\(LoadPlugin="geoip\)%#\1%' $CFGFILE
-    sed -i 's%^#*\(LoadPlugin="geoipfree\)%\1%' $CFGFILE
-    sed -i 's%^#*\(LoadPlugin="hostinfo\)%\1%' $CFGFILE
-    sed -i 's%^#*\(LoadPlugin="rawlog\)%\1%' $CFGFILE
+    sed 's%^#*\(LoadPlugin="geoip\)%#\1%' -i $CFGFILE
+    sed 's%^#*\(LoadPlugin="geoipfree\)%\1%' -i $CFGFILE
+    sed 's%^#*\(LoadPlugin="hostinfo\)%\1%' -i $CFGFILE
+    sed 's%^#*\(LoadPlugin="rawlog\)%\1%' -i $CFGFILE
     
-    sed -i 's%^\(HostAliases=".*\)"$%\1 www REGEX[example.com]"%' $CFGFILE
-    sed -i "s%^\(SiteDomain=\"\).*$%\1${WEBSITE}\"%" $CFGFILE
+    sed 's%^\(HostAliases=".*\)"$%\1 www REGEX[example.com]"%' -i $CFGFILE
+    sed "s%^\(SiteDomain=\"\).*$%\1${WEBSITE}\"%" -i $CFGFILE
 
 Initialize and run manually the first _awstats_ update for this web site:
 

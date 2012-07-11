@@ -75,9 +75,9 @@ Small changes to _htaccess_ global configuration file used by webmail virtual ho
 
     SUFFIX=".dpkg-dist"                             # only on packages upgrade
     
-    sed -i "s%\(upload_max_filesize\).*$%\1\t20M%" /etc/roundcube/htaccess$SUFFIX
-    sed -i "s%^#*\(php_value\s*mbstring.func_overload\)%#\1%" /etc/roundcube/htaccess$SUFFIX
-    sed -i "s%\(Header\) append \(Cache-Control\)%\1 merge \2%" /etc/roundcube/htaccess$SUFFIX
+    sed "s%\(upload_max_filesize\).*$%\1\t20M%" -i /etc/roundcube/htaccess$SUFFIX
+    sed "s%^#*\(php_value\s*mbstring.func_overload\)%#\1%" -i /etc/roundcube/htaccess$SUFFIX
+    sed "s%\(Header\) append \(Cache-Control\)%\1 merge \2%" -i /etc/roundcube/htaccess$SUFFIX
     
     [ -z "$SUFFIX" ] || mv -vf /etc/roundcube/htaccess$SUFFIX /etc/roundcube/htaccess
 
@@ -88,7 +88,7 @@ On upgrades it's practical to preserve the old configuration file and commit all
     SUFFIX=".ucf-dist"                             # only on packages upgrade
     MAINCFG="/etc/roundcube/main.inc.php$SUFFIX"
     
-    sed -i "s%\(rcmail_config\['plugins'\] =\) .*$%\1 array('archive', 'emoticons', 'markasjunk', 'new_user_dialog', 'vcard_attachments');%" $MAINCFG
+    sed "s%\(rcmail_config\['plugins'\] =\) .*$%\1 array('archive', 'emoticons', 'markasjunk', 'new_user_dialog', 'vcard_attachments');%" -i $MAINCFG
 
 These Roundcube plugins don't have a configuration file or the default configuration is good enough.
 
@@ -100,36 +100,36 @@ On upgrades it's practical to preserve the old configuration file and commit all
     MAINCFG="/etc/roundcube/main.inc.php$SUFFIX"
     
     ## LOGGING/DEBUGGING
-    sed -i "s%\(rcmail_config\['log_logins'\] =\) .*$%\1 true;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['log_session'\] =\) .*$%\1 true;%" $MAINCFG
+    sed "s%\(rcmail_config\['log_logins'\] =\) .*$%\1 true;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['log_session'\] =\) .*$%\1 true;%" -i $MAINCFG
     
     ## IMAP & SMTP
-    sed -i "s%\(rcmail_config\['default_host'\] =\) .*$%\1 'localhost';%" $MAINCFG
-    sed -i "s%\(rcmail_config\['smtp_server'\] =\) .*$%\1 'localhost';%" $MAINCFG
+    sed "s%\(rcmail_config\['default_host'\] =\) .*$%\1 'localhost';%" -i $MAINCFG
+    sed "s%\(rcmail_config\['smtp_server'\] =\) .*$%\1 'localhost';%" -i $MAINCFG
     
     ## SYSTEM
-    sed -i "s%\(rcmail_config\['force_https'\] =\) .*$%\1 true;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['login_autocomplete'\] =\) .*$%\1 2;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['session_domain'\] =\) .*$%\1 '$(dnsdomainname)';%" $MAINCFG
-    sed -i "s%\(rcmail_config\['mail_domain'\] =\) .*$%\1 '\%d';%" $MAINCFG
-    sed -i "s%\(rcmail_config\['sendmail_delay'\] =\) .*$%\1 20;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['http_received_header'\] =\) .*$%\1 true;%" $MAINCFG
+    sed "s%\(rcmail_config\['force_https'\] =\) .*$%\1 true;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['login_autocomplete'\] =\) .*$%\1 2;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['session_domain'\] =\) .*$%\1 '$(dnsdomainname)';%" -i $MAINCFG
+    sed "s%\(rcmail_config\['mail_domain'\] =\) .*$%\1 '\%d';%" -i $MAINCFG
+    sed "s%\(rcmail_config\['sendmail_delay'\] =\) .*$%\1 20;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['http_received_header'\] =\) .*$%\1 true;%" -i $MAINCFG
     
     ## USER INTERFACE
-    sed -i "s%\(rcmail_config\['list_cols'\] = array\).*$%\1('flag', 'status', 'attachment', 'subject', 'from', 'date', 'size');%" $MAINCFG
-    sed -i "s%\(rcmail_config\['max_pagesize'\] =\) .*$%\1 6000;%" $MAINCFG
+    sed "s%\(rcmail_config\['list_cols'\] = array\).*$%\1('flag', 'status', 'attachment', 'subject', 'from', 'date', 'size');%" -i $MAINCFG
+    sed "s%\(rcmail_config\['max_pagesize'\] =\) .*$%\1 6000;%" -i $MAINCFG
     
     ## USER PREFERENCES
-    sed -i "s%\(rcmail_config\['pagesize'\] =\) .*$%\1 600;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['show_images'\] =\) .*$%\1 1;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['htmleditor'\] =\) .*$%\1 2;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['preview_pane'\] =\) .*$%\1 true;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['logout_expunge'\] =\) .*$%\1 true;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['mime_param_folding'\] =\) .*$%\1 0;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['skip_deleted'\] =\) .*$%\1 true;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['check_all_folders'\] =\) .*$%\1 true;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['autoexpand_threads'\] =\) .*$%\1 2;%" $MAINCFG
-    sed -i "s%\(rcmail_config\['mdn_requests'\] =\) .*$%\1 2;%" $MAINCFG
+    sed "s%\(rcmail_config\['pagesize'\] =\) .*$%\1 600;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['show_images'\] =\) .*$%\1 1;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['htmleditor'\] =\) .*$%\1 2;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['preview_pane'\] =\) .*$%\1 true;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['logout_expunge'\] =\) .*$%\1 true;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['mime_param_folding'\] =\) .*$%\1 0;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['skip_deleted'\] =\) .*$%\1 true;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['check_all_folders'\] =\) .*$%\1 true;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['autoexpand_threads'\] =\) .*$%\1 2;%" -i $MAINCFG
+    sed "s%\(rcmail_config\['mdn_requests'\] =\) .*$%\1 2;%" -i $MAINCFG
 
 If you did an upgrade, once you're sure that the above changes are OK replace the old config with the new one:
 
@@ -140,7 +140,7 @@ If you did an upgrade, once you're sure that the above changes are OK replace th
 
     PLUGIN="show_additional_headers"
     grep --color -w "$PLUGIN" $MAINCFG || \
-      sed -i "s%\(rcmail_config\['plugins'\] = array(.*\));$%\1, '$PLUGIN');%" $MAINCFG
+      sed "s%\(rcmail_config\['plugins'\] = array(.*\));$%\1, '$PLUGIN');%" -i $MAINCFG
 
 The above commands will just append the plugin name to the plugins list.
 
@@ -150,7 +150,7 @@ The above commands will just append the plugin name to the plugins list.
     \$rcmail_config['show_additional_headers'] = '';
     __EOF__
     
-    sed -i "s%\(rcmail_config\['show_additional_headers'\] =\) .*$%\1 array('Reply-To', 'Followup-To', 'List-Id', 'Sender', 'X-Sender', 'Delivered-To', 'User-Agent', 'X-Mailer', 'Organization');%" $MAINCFG
+    sed "s%\(rcmail_config\['show_additional_headers'\] =\) .*$%\1 array('Reply-To', 'Followup-To', 'List-Id', 'Sender', 'X-Sender', 'Delivered-To', 'User-Agent', 'X-Mailer', 'Organization');%" -i $MAINCFG
 
 ### Enable and configure «managesieve» plugin
 
@@ -158,7 +158,7 @@ This setup was tested only on a Dovecot IMAP server with ManageSieve.
 
     PLUGIN="managesieve"
     grep --color -w "$PLUGIN" $MAINCFG || \
-      sed -i "s%\(rcmail_config\['plugins'\] = array(.*\));$%\1, '$PLUGIN');%" $MAINCFG
+      sed "s%\(rcmail_config\['plugins'\] = array(.*\));$%\1, '$PLUGIN');%" -i $MAINCFG
 
 The above commands will just append the plugin name to the plugins list.
 
@@ -168,9 +168,9 @@ The above commands will just append the plugin name to the plugins list.
     rm -vf $CFG
     cp -va /usr/share/roundcube/plugins/managesieve/config.inc.php.dist $CFG$SUFFIX
     
-    sed -i "s%\(rcmail_config\['managesieve_port'\] =\) .*$%\1 4190;%" $CFG$SUFFIX
-    sed -i "s%\(rcmail_config\['managesieve_auth_type'\] =\) .*$%\1 'PLAIN';%" $CFG$SUFFIX
-    sed -i "s%\($rcmail_config\['managesieve_script_name'\] =\) .*$%\1 'roundcube';%" $CFG$SUFFIX
+    sed "s%\(rcmail_config\['managesieve_port'\] =\) .*$%\1 4190;%" -i $CFG$SUFFIX
+    sed "s%\(rcmail_config\['managesieve_auth_type'\] =\) .*$%\1 'PLAIN';%" -i $CFG$SUFFIX
+    sed "s%\($rcmail_config\['managesieve_script_name'\] =\) .*$%\1 'roundcube';%" -i $CFG$SUFFIX
     
     mv -vf $CFG$SUFFIX $CFG
 
@@ -180,7 +180,7 @@ This plugin is useful only if you migrate from `squirrelmail` to `roundcube` —
 
     PLUGIN="squirrelmail_usercopy"
     grep --color -w "$PLUGIN" $MAINCFG || \
-      sed -i "s%\(rcmail_config\['plugins'\] = array(.*\));$%\1, '$PLUGIN');%" $MAINCFG
+      sed "s%\(rcmail_config\['plugins'\] = array(.*\));$%\1, '$PLUGIN');%" -i $MAINCFG
 
 The above commands will just append the plugin name to the plugins list.
 
@@ -314,14 +314,14 @@ A minimal fix for this problem is to execute these commands:
     cp -va /usr/share/php/MDB2.php /usr/share/php/MDB2.php_2.5.0b2-1
     
     grep 'function &_wrapResult($result,' /usr/share/php/MDB2.php
-    sed -i 's%\(function &_wrapResult($result\),%\1_resource,%' /usr/share/php/MDB2.php
-    sed -i 's%\(reverse->tableInfo($result\));%\1_resource);%' /usr/share/php/MDB2.php
-    sed -i 's%\($result =& new $class_name($this, $result\),%\1_resource,%' /usr/share/php/MDB2.php
-    sed -i 's%\($result = new $result_wrap_class($result\),%\1_resource,%' /usr/share/php/MDB2.php
+    sed 's%\(function &_wrapResult($result\),%\1_resource,%' -i /usr/share/php/MDB2.php
+    sed 's%\(reverse->tableInfo($result\));%\1_resource);%' -i /usr/share/php/MDB2.php
+    sed 's%\($result =& new $class_name($this, $result\),%\1_resource,%' -i /usr/share/php/MDB2.php
+    sed 's%\($result = new $result_wrap_class($result\),%\1_resource,%' -i /usr/share/php/MDB2.php
     
     grep '=& new' /usr/share/php/MDB2.php
-    sed -i 's%db =& new%db = new%' /usr/share/php/MDB2.php
-    sed -i 's%result =& new%result = new%' /usr/share/php/MDB2.php
+    sed 's%db =& new%db = new%' -i /usr/share/php/MDB2.php
+    sed 's%result =& new%result = new%' -i /usr/share/php/MDB2.php
 
 If something is not working just restore the original file from backup.
 

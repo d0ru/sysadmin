@@ -21,7 +21,7 @@ Configurare serviciu
 
 #### Folosește «syslog», închide «stdin/out/err»
 
-sed -i "s%-Lsd%-LS5d%" /etc/default/snmpd
+sed "s%-Lsd%-LS5d%" -i /etc/default/snmpd
 
 Am ales nivelul 5 pentru a evita „info” și „debug”.
 

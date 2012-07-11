@@ -13,5 +13,5 @@ Configurare serviciu TFTP
 
 Implicit serviciul TFTP este configurat fără permisiunea de scriere. Aceasta se poate schimba prin adăugarea unui parametru la pornire.
 
-    HOSTu:~# sed -i 's%\(TFTP_OPTIONS=".*\)"$%\1 --create"%' /etc/default/tftpd-hpa
+    HOSTu:~# sed 's%\(TFTP_OPTIONS=".*\)"$%\1 --create"%' -i /etc/default/tftpd-hpa
     HOSTu:~# service tftpd-hpa restart

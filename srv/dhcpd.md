@@ -9,18 +9,18 @@ Configurare server DHCP
 
 ### Parametrii generali
 
-    HOSTu:~# sed -i "s%^\(option domain-name\) .*$%\1 \"$(dnsdomainname)\";%" /etc/dhcp/dhcpd.conf
+    HOSTu:~# sed "s%^\(option domain-name\) .*$%\1 \"$(dnsdomainname)\";%" -i /etc/dhcp/dhcpd.conf
 
     HOSTu:~# NS="10.100.0.1, 10.100.0.2"
-    sed -i "s%^\(option domain-name-servers\) .*$%\1 $NS;%" /etc/dhcp/dhcpd.conf
+    sed "s%^\(option domain-name-servers\) .*$%\1 $NS;%" -i /etc/dhcp/dhcpd.conf
 
-    HOSTu:~# sed -i "s%^\(default-lease-time\) .*$%\1 7200;%" /etc/dhcp/dhcpd.conf
-    sed -i "s%^\(max-lease-time\) .*$%\1 86400;%" /etc/dhcp/dhcpd.conf
+    HOSTu:~# sed "s%^\(default-lease-time\) .*$%\1 7200;%" -i /etc/dhcp/dhcpd.conf
+    sed "s%^\(max-lease-time\) .*$%\1 86400;%" -i /etc/dhcp/dhcpd.conf
 
-    sed -i "s%^#*\(authoritative;\)$%\1%" /etc/dhcp/dhcpd.conf
-    sed -i "s%^#*\(log-facility local7;\)$%#\1%" /etc/dhcp/dhcpd.conf
+    sed "s%^#*\(authoritative;\)$%\1%" -i /etc/dhcp/dhcpd.conf
+    sed "s%^#*\(log-facility local7;\)$%#\1%" -i /etc/dhcp/dhcpd.conf
 
-    HOSTu:~# sed -i "s%^#*authoritative;$%&\nalways-broadcast on;%" /etc/dhcp/dhcpd.conf
+    HOSTu:~# sed "s%^#*authoritative;$%&\nalways-broadcast on;%" -i /etc/dhcp/dhcpd.conf
 
 ### Adăugare subnet local
 
@@ -67,7 +67,7 @@ Configurare server DHCP
 
 ### Activare serviciu
 
-    HOSTu:~# sed -i "s%^\(INTERFACES=\).*$%INTERFACES=\"eth0\"%" /etc/default/isc-dhcp-server
+    HOSTu:~# sed "s%^\(INTERFACES=\).*$%INTERFACES=\"eth0\"%" -i /etc/default/isc-dhcp-server
 
     HOSTu:~# update-dhcp-groups
     HOSTu:~# service isc-dhcp-server restart

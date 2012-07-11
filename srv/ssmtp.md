@@ -37,7 +37,7 @@ Implicit, portul standard SMTP (25) este utilizat. Aceasta se poate schimba astf
 
 #### Activează comunicația securizată prin „TLS”
 
-    cat <<__EOF__ >> /etc/ssmtp/ssmtp.conf
+    cat >> /etc/ssmtp/ssmtp.conf <<__EOF__
 
     # use TLS to talk to the SMTP server
     UseSTARTTLS=yes
