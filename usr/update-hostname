@@ -1,0 +1,73 @@
+#!/bin/sh
+# Update all configuration files for a new HOSTNAME.
+# Author:   Teodor 'døru' MICU <mteodor@gmail.com>
+# Revision: December 14, 2012
+#
+# Location: /usr/local/sbin/
+
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+set -eu
+
+[ $# -eq 1 ] || exit 0			# one argument expected
+echo $1 | grep -q '\.' && exit 1	# short hostname expected
+
+# hostnames
+OHOST=$(hostname -s)
+NHOST=$1
+[ "$OHOST" != "$NHOST" ] || exit 0
+
+# IP addresses
+OADDR=$(sed -n "s|^\s*address \([0-9.]\+\)$|\1|p" /etc/network/interfaces)
+NADDR=$(getent hosts $NHOST | cut -d' ' -f1)
+[ -n "$OADDR" -a -n "$NADDR" ] || exit 1
+
+# network interface name, MAC address
+IFACE=$(sed -n "s|^iface \([a-z]\+[0-9]\+\) inet static$|\1|p" /etc/network/interfaces)
+[ -n "$IFACE" ] || exit 2
+ETHER=$(ip link list $IFACE | sed -n "s|^\s*link/ether \([a-f0-9:]\+\) brd ff:ff:ff:ff:ff:ff$|\1|p")
+[ $(echo -n $ETHER | wc -c) -eq 17 ] || exit 17
+
+# START
+echo "Set the system's host name: $OHOST → $NHOST"
+grep -lr $OHOST /etc | xargs -l1 -- sed "s|$OHOST|$NHOST|g" -i
+if [ "$OADDR" != "$NADDR" ]; then
+	echo "Set the system's IP address: $OADDR → $NADDR"
+	grep -lr $OADDR /etc | xargs -l1 -- sed "s|$OADDR|$NADDR|" -i
+else
+	echo "Keep the system's IP address: $OADDR → $NADDR"
+fi
+
+echo
+grep -h -w $NHOST /etc/hostname /etc/hosts
+hostname $(cat /etc/hostname)
+rm -vf $(locate -e ssh_host_) | grep -v "changetrack/etc:ssh"
+echo
+DEBCONF_FRONTEND=noninteractive dpkg-reconfigure openssh-server
+
+UDEVCFG=/etc/udev/rules.d/70-persistent-net.rules
+if grep -q "$ETHER" $UDEVCFG; then
+	sed "/ATTR{address}==\"$ETHER\", .* NAME=\"$IFACE\"/d" -i $UDEVCFG
+	tail -1 $UDEVCFG | grep -q '^# PCI device' && \
+		sed '$d' -i $UDEVCFG		# șterge ultima linie
+	tail -1 $UDEVCFG | grep -q '^\s*$' && \
+		sed '$d' -i $UDEVCFG
+	tail -1 $UDEVCFG | grep -q '^\s*$' && \
+		sed '$d' -i $UDEVCFG
+fi
+grep "$ETHER" $UDEVCFG || :
+grep "$IFACE" $UDEVCFG || :
+echo
+echo 'The system is going down for reboot in 26 seconds!'
+echo -n "Press CTRL^C to abort .."
+for t in $(seq 1 20); do
+	sleep 1
+	echo -n '.'
+done
+for t in $(seq 1 6); do
+	sleep 1
+	echo -n '!'
+done
+echo
+echo
+reboot
+:
