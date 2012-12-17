@@ -1,7 +1,7 @@
 #!/bin/sh
 # Update all configuration files for a new HOSTNAME.
 # Author:   Teodor 'døru' MICU <mteodor@gmail.com>
-# Revision: December 14, 2012
+# Revision: December 17, 2012
 #
 # Location: /usr/local/sbin/
 
@@ -34,13 +34,14 @@ if [ "$OADDR" != "$NADDR" ]; then
 	echo "Set the system's IP address: $OADDR → $NADDR"
 	grep -lr $OADDR /etc | xargs -l1 -- sed "s|$OADDR|$NADDR|" -i
 else
-	echo "Keep the system's IP address: $OADDR → $NADDR"
+	echo "Keep the system's IP address: $NADDR"
 fi
 
 echo
 grep -h -w $NHOST /etc/hostname /etc/hosts
 hostname $(cat /etc/hostname)
-rm -vf $(locate -e ssh_host_) | grep -v "changetrack/etc:ssh"
+rm -f /var/lib/changetrack/etc:ssh:ssh_host_[dr]sa_key.*
+rm -vf /etc/ssh/ssh_host_[dr]sa_key*
 echo
 DEBCONF_FRONTEND=noninteractive dpkg-reconfigure openssh-server
 
