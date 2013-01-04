@@ -93,7 +93,7 @@ Editează fișierul de configurare `/etc/opendkim.conf` să conțină:
     #LogWhy                 yes
     UMask                   002
 
-    Domain                  museglobal.com
+    Domain                  DOMAIN
     SubDomains              yes
     KeyFile                 /etc/mail/dkim_SELECTOR.key
     Selector                SELECTOR
