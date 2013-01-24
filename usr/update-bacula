@@ -6,7 +6,7 @@
 # License: Public Domain
 # Location: /usr/local/sbin/
 #
-# Version: 1.12
+# Version: 1.13
 
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
@@ -58,7 +58,7 @@ __EOF__
 
 # mkclient CLIENT
 mkclient(){
-	test -s ${BCACHE}/director/client_${CLIENT}.conf && return 0
+	[ -s ${BCACHE}/director/client_${CLIENT}.conf ] && return 0
 
 	mkbanner ${BCACHE}/director/client_${CLIENT}.conf
 	cat >> ${BCACHE}/director/client_${CLIENT}.conf <<__EOF__
@@ -143,7 +143,7 @@ __EOF__
 
 # mkstorage CLIENT
 mkstorage(){
-	test -s ${BCACHE}/director/storage_${CLIENT}.conf && return 0
+	[ -s ${BCACHE}/director/storage_${CLIENT}.conf ] && return 0
 
 	mkbanner ${BCACHE}/director/storage_${CLIENT}.conf
 	cat >> ${BCACHE}/director/storage_${CLIENT}.conf <<__EOF__
@@ -235,7 +235,7 @@ TMPFILE=$(mktemp)
 grep '^[A-Za-z0-9]' $CONF | sed -e "s%\s*|\s*%|%g" > $TMPFILE
 while read LINE; do
 	CLIENT=$(printf "$LINE" | cut -d\| -f1)
-	test -z "$CLIENT" && continue
+	[ "$CLIENT" ] || continue
 	if printf "$CLIENT" | grep -q '[^A-Za-z0-9_-]'; then
 		echo "W: non alpha-numeric character in '$CLIENT' client name (ignored)"
 		continue
@@ -247,17 +247,17 @@ while read LINE; do
 	CLIENTADDR=$(host $CLIENT | cut '-d ' -f1)
 
 	PASSWORD=$(printf "$LINE" | cut -d\| -f2)
-	test -z "$PASSWORD" && continue
+	[ "$PASSWORD" ] || continue
 
 	SCHEDULE=$(printf "$LINE" | cut -d\| -f3)
-	test -z "$SCHEDULE" && continue
+	[ "$SCHEDULE" ] || continue
 	if printf "$SCHEDULE" | grep -q '[^A-Za-z0-9_-]'; then
 		echo "W: character not allowed in '$SCHEDULE' schedule name ($CLIENT ignored)"
 		continue
 	fi
 
 	STORAGE=$(printf "$LINE" | cut -d\| -f4)
-	test -z "$STORAGE" && continue
+	[ "$STORAGE" ] || continue
 	if printf "$STORAGE" | grep -q '[^A-Za-z0-9_-]'; then
 		echo "W: non alpha-numeric character in '$STORAGE' storage host ($CLIENT ignored)"
 		continue
@@ -269,28 +269,28 @@ while read LINE; do
 	STORAGEADDR=$(host $STORAGE | cut '-d ' -f1)
 
 	RETENTION=$(printf "$LINE" | cut -d\| -f5 | sed -e "s%\s*,\s*%,%g")
-	test -z "$RETENTION" && continue
+	[ "$RETENTION" ] || continue
 	FRETENTION=$(printf "$RETENTION" | cut -d, -f1)
-	test -z "$FRETENTION" && continue
+	[ "$FRETENTION" ] || continue
 	JRETENTION=$(printf "$RETENTION" | cut -d, -f2)
-	test -z "$JRETENTION" && continue
+	[ "$JRETENTION" ] || continue
 	VRETENTION=$(printf "$RETENTION" | cut -d, -f3)
-	test -z "$VRETENTION" && continue
+	[ "$VRETENTION" ] || continue
 
 	MAXVOLJOBS=$(printf "$LINE" | cut -d\| -f6)
-	test -z "$MAXVOLJOBS" || VRETENTION="$VRETENTION
+	[ -z "$MAXVOLJOBS" ] || VRETENTION="$VRETENTION
   Maximum Volume Jobs = $MAXVOLJOBS"
 
 	VUSEDURATION=$(printf "$LINE" | cut -d\| -f7)
-	test -z "$VUSEDURATION" || VRETENTION="$VRETENTION
+	[ -z "$VUSEDURATION" ] || VRETENTION="$VRETENTION
   Volume Use Duration = $VUSEDURATION"
 
 	AUTOPRUNE=$(printf "$LINE" | cut -d\| -f8 | tr a-z A-Z)
-	test -z "$AUTOPRUNE" && continue
-	test "$AUTOPRUNE" = "YES" -o "$AUTOPRUNE" = "NO" || continue
+	[ "$AUTOPRUNE" ] || continue
+	[ "$AUTOPRUNE" = "YES" -o "$AUTOPRUNE" = "NO" ] || continue
 
 	JOBS=$(printf "$LINE" | cut -d\| -f9)
-	test -z "$JOBS" && continue
+	[ "$JOBS" ] || continue
 
 	mkclient
 	mkfilesets
