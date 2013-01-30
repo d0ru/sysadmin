@@ -111,7 +111,7 @@ On upgrades it's practical to preserve the old configuration file and commit all
     sed "s|\(rcmail_config\['force_https'\] =\) .*$|\1 true;|" -i $MAINCFG
     sed "s|\(rcmail_config\['login_autocomplete'\] =\) .*$|\1 2;|" -i $MAINCFG
     sed "s|\(rcmail_config\['session_domain'\] =\) .*$|\1 '$(dnsdomainname)';|" -i $MAINCFG
-    sed "s|\(rcmail_config\['mail_domain'\] =\) .*$|\1 '\|d';|" -i $MAINCFG
+    sed "s|\(rcmail_config\['mail_domain'\] =\) .*$|\1 '%d';|" -i $MAINCFG
     sed "s|\(rcmail_config\['sendmail_delay'\] =\) .*$|\1 20;|" -i $MAINCFG
     sed "s|\(rcmail_config\['http_received_header'\] =\) .*$|\1 true;|" -i $MAINCFG
     
