@@ -1,7 +1,9 @@
-squid3 3.1.20-1 (web)
+squid3 3.1.20-2 (web)
 =====================
 
-`squid` este un server proxy pentru web, cu suport pentru **FTP** și **HTTP**.
+[Squid][acasă] — un server proxy pentru web, cu suport pentru **FTP** și **HTTP**.
+
+[acasă]: http://www.squid-cache.org/
 
 
 Configurare serviciu
@@ -15,7 +17,7 @@ Configurare serviciu
 
 Aceste semnături anunță prezența unui serviciu „proxy”, lucru nedorit în anumite cazuri.
 
-### Permite accesul din subnetul local
+### Permite accesul din rețeaua locală
 
     CONFIG="/etc/squid3/squid.conf"
 
@@ -31,7 +33,7 @@ Editează fișierul de configurarea să conțină parametrii pentru autentificar
 
     auth_param digest program /usr/lib/squid3/digest_pw_auth /etc/squid3/pw_digest
     auth_param digest children 5
-    auth_param digest realm Squid proxy-caching web server (penguin.museglobal.ro)
+    auth_param digest realm Squid proxy-caching web server (HOST.DOMAIN.tld)
     auth_param digest nonce_garbage_interval 5 minutes
     auth_param digest nonce_max_duration 30 minutes
     auth_param digest nonce_max_count 50
@@ -48,9 +50,9 @@ Adaugă o listă de control pentru autentificarea „digest”:
 
     CONFIG="/etc/squid3/squid.conf"
     grep "^acl auth_digest" $CONFIG || \
-      sed "s%^acl to_localhost dst .*$%&\nacl auth_digest proxy_auth REQUIRED%" -i $CONFIG
+      sed "s|^acl to_localhost dst .*$|&\nacl auth_digest proxy_auth REQUIRED|" -i $CONFIG
 
-Permite accesul prin autentificare:
+Permite accesul prin autentificare *digest*:
 
     grep "^http_access allow auth_digest" $CONFIG || \
-      sed "s%^http_access allow localhost$%&\nhttp_access allow auth_digest%" -i $CONFIG
+      sed "s|^http_access allow localhost$|&\nhttp_access allow auth_digest|" -i $CONFIG
