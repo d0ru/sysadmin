@@ -1,63 +1,60 @@
 #!/bin/sh
-# Registering a new host on local network.
+# Register a new host on local network.
 # (DNS domain and revzone, DHCP)
 # Author:   Teodor 'døru' MICU <mteodor@gmail.com>
-# Revision: February 4, 2013
+# Revision: February 7, 2013
 #
 # Location: /usr/local/sbin/
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 set -eu
 
-DESCRIPTION="Registering a new host on local network"
-FILEDHCP="/etc/dhcp/hosts.list"
-FILEVLAN="/proc/net/vlan/config"
+NAME="$(basename $0)"
 
-BATCH=0					# ask questions if necessary
-DIRZONE="/etc/bind/zones"
-DOMAIN=$(dnsdomainname)
-REVZONE="10.revzone"
+# read custom configuration file if it's present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
-[ $(id -u) -eq 0 ] || exit 0		# root priviledges required
+# set internal variables to their default values (if unset)
+DIRZONE=${DIRZONE:-/etc/bind/zones}
+DOMAIN=${DOMAIN:-$(dnsdomainname)}
+REVZONE=${REVZONE:-10.in-addr.arpa}
+FILEDHCP=${FILEDHCP:-/etc/dhcp/hosts.list}
+FILEVLAN=${FILEVLAN:-/proc/net/vlan/config}
 
-[ -r "$FILEDHCP" ] || exit 1		# must have read perms
-[ -r "$FILEVLAN" ] || exit 2
-[ -r "$DIRZONE/$DOMAIN" ] || exit 3
-[ -r "$DIRZONE/$REVZONE" ] || exit 4
+# must have read perms
+[ -r "$DIRZONE/$DOMAIN" -a -w "$DIRZONE/$DOMAIN" ] || exit 1	# +write
+[ -r "$DIRZONE/$REVZONE" -a -w "$DIRZONE/$REVZONE" ] || exit 1	# +write
+[ -r "$FILEDHCP" -a -w "$FILEDHCP" ] || exit 1			# +write
+[ -r "$FILEVLAN" ] || exit 1
 
 # print usage instructions
 usage()
 {
-	echo "Usage: $0 [ARG ARG2 ..]"
-	echo "  where 'ARG' can be any combination of the following:"
-	echo "  -b | --batch                        (no question)"
-	echo "  -h | --host HOST"
-	echo "  -g | --group GROUP"
-	echo "  -r | --room FNN                     (room number)"
-	echo "  -m | --mac hh:hh:hh:hh:hh:hh"
-	echo "  -o | --owner \"First-Middle LAST\""
-	echo "  -i | --info \"short host description\""
+	echo "Usage: $(basename $0) [options] [HOST]"
+	echo
+	echo "Options:"
+	echo "  -g, --group GROUP             owner's working group (VLAN)"
+	echo "  -h, --help                    display this help message and exit"
+	echo "  -i, --info TEXT               short host description"
+	echo "  -m, --mac ADDR                host's network MAC address (hex)"
+	echo "  -o, --owner NAME              host's owner full name"
+	echo "  -r, --room FNN                room number (max 999)"
 }
+
+# init vars to make "set -u" happy
+HOST=
+GROUP=
+MACADDR=
+ROOM=
+OWNER=
+INFO=
 
 # getopt
 while [ $# -gt 0 ]; do
 	case "$1" in
-	"-b" | "--batch" )
-		BATCH=1
-		;;
-	"-h" | "--host" )
-		if [ $# -lt 2 ]; then
-			echo "E: no host name!" >&2
-			echo
-			usage
-			exit 100
-		fi
-		shift
-		HOST="$1"
-		;;
 	"-g" | "--group" )
 		if [ $# -lt 2 ]; then
-			echo "E: no group name!" >&2
+			echo "$NAME: no group name." >&2
 			echo
 			usage
 			exit 200
@@ -67,7 +64,7 @@ while [ $# -gt 0 ]; do
 		;;
 	"-m" | "--mac" )
 		if [ $# -lt 2 ]; then
-			echo "E: no MAC address!" >&2
+			echo "$NAME: no MAC address." >&2
 			echo
 			usage
 			exit 300
@@ -77,7 +74,7 @@ while [ $# -gt 0 ]; do
 		;;
 	"-r" | "--room" )
 		if [ $# -lt 2 ]; then
-			echo "E: no room number!" >&2
+			echo "$NAME: no room number." >&2
 			echo
 			usage
 			exit 400
@@ -87,7 +84,7 @@ while [ $# -gt 0 ]; do
 		;;
 	"-o" | "--owner" )
 		if [ $# -lt 2 ]; then
-			echo "E: no owner name!" >&2
+			echo "$NAME: no owner name." >&2
 			echo
 			usage
 			exit 500
@@ -97,7 +94,7 @@ while [ $# -gt 0 ]; do
 		;;
 	"-i" | "--info" )
 		if [ $# -lt 2 ]; then
-			echo "E: no host details!" >&2
+			echo "$NAME: no host info." >&2
 			echo
 			usage
 			exit 600
@@ -105,15 +102,24 @@ while [ $# -gt 0 ]; do
 		shift
 		INFO="$1"
 		;;
-	"--help" | "--usage" )
+	"-h" | "--help" )
 		usage
 		exit 0
 		;;
-	* )
-		echo "E: argument '$1' is not recognized!" >&2
+	-* )
+		echo "$NAME: option '$1' is not recognized." >&2
 		echo
 		usage
-		exit 900
+		exit 9
+		;;
+	* )
+		if [ "$HOST" ]; then
+			echo "$NAME: more than one host name." >&2
+			echo
+			usage
+			exit 100
+		fi
+		HOST="$1"
 		;;
 	esac
 	shift
@@ -122,35 +128,28 @@ done
 # check host
 ck_host()
 {
-	# old zone serial number
-	ZSERIAL=$(sed -n "s|^\s*\([0-9]\+\)\s*; serial$|\1|p" $DIRZONE/$DOMAIN)
-	if [ -z "$ZSERIAL" ]; then
-		echo "E: DNS zone '$DOMAIN' has no serial number!" >&2
-		echo
-		exit 101
-	fi
-
 	# RFC 952
-	if [ -z "$HOST" ] || echo "$HOST" | grep --color '[^0-9a-zA-Z-]'; then
-		echo "E: invalid host name!" >&2
-		echo
-		return 102
+	if [ -z "$HOST" ] || \
+	   echo "$HOST" | grep --color '^-' >&2 || \
+	   echo "$HOST" | grep --color '[^0-9a-zA-Z-]' >&2; then
+		echo "$NAME: invalid host name." >&2
+		return 101
 	fi
 
 	HOST=$(echo "$HOST" | tr A-Z a-z)
-	if getent hosts $HOST || grep --color "^$HOST" $DIRZONE/$DOMAIN; then
-		echo "E: host '${HOST}' is already in use!" >&2
-		echo
-		return 103
+	if grep --color "^\s*$HOST\s" $DIRZONE/$DOMAIN >&2 || \
+	   grep --color "|$HOST|" $FILEDHCP; then
+		echo "$NAME: host is already in use." >&2
+		return 102
 	fi
 }
 
 # check group and get VLAN id
 ck_group()
 {
-	if [ -z "$GROUP" ] || echo "$GROUP" | grep --color '[^a-zA-Z]'; then
-		echo "E: invalid group name!" >&2
-		echo
+	if [ -z "$GROUP" ] || \
+	   echo "$GROUP" | grep --color '[^a-zA-Z]' >&2; then
+		echo "$NAME: invalid group name." >&2
 		return 201
 	fi
 
@@ -158,10 +157,10 @@ ck_group()
 	if [ "SERV" = "$GROUP" ]; then
 		VLAN=0
 	else
-		VLAN=$(sed -n "s/$(echo -n "$GROUP" | tr A-Z a-z)\s\+|\s*\([0-9]*\)\s*.*$/\1/p" $FILEVLAN)
+		group=$(echo -n "$GROUP" | tr A-Z a-z)
+		VLAN=$(sed -n "s/$group\s\+|\s*\([0-9]*\)\s*.*$/\1/p" $FILEVLAN)
 		if [ -z "$VLAN" ]; then
-			echo "E: VLAN '$GROUP' doesn't exist!" >&2
-			echo
+			echo "$NAME: VLAN '$GROUP' doesn't exist." >&2
 			return 202
 		fi
 	fi
@@ -170,28 +169,25 @@ ck_group()
 # check MAC address
 ck_macaddr()
 {
-	if [ -z "$MACADDR" ] || echo "$MACADDR" | grep --color '[^:0-9a-fA-F]'; then
-		echo "E: invalid MAC address!" >&2
-		echo
+	if [ -z "$MACADDR" ] || \
+	   echo "$MACADDR" | grep --color '[^:0-9a-fA-F]' >&2; then
+		echo "$NAME: invalid MAC address." >&2
 		return 301
 	fi
 
 	if [ $(echo -n "$MACADDR" | wc -c) -ne 17 ]; then
-		echo "E: invalid MAC address length!" >&2
-		echo
+		echo "$NAME: invalid MAC address length." >&2
 		return 302
 	fi
 
 	if [ $(echo "$MACADDR" | awk -F: '{ print NF }') -ne 6 ]; then
-		echo "E: invalid MAC address syntax!" >&2
-		echo
+		echo "$NAME: invalid MAC address syntax." >&2
 		return 303
 	fi
 
 	MACADDR=$(echo "$MACADDR" | tr A-Z a-z)
-	if grep --color "^$GROUP|$MACADDR" $FILEDHCP; then
-		echo "E: the MAC address is already registered in this group!" >&2
-		echo
+	if grep --color "^$GROUP|$MACADDR" $FILEDHCP >&2; then
+		echo "$NAME: MAC address already registered in this group." >&2
 		return 304
 	fi
 }
@@ -199,21 +195,20 @@ ck_macaddr()
 # check room number
 ck_room()
 {
-	if [ -z "$ROOM" ] || echo "$ROOM" | grep --color '[^0-9]'; then
-		echo "E: invalid room number!" >&2
-		echo
+	if [ -z "$ROOM" ] || \
+	   echo "$ROOM" | grep --color '[^0-9]' >&2; then
+		echo "$NAME: invalid room number." >&2
 		return 401
 	fi
 
 	# remove 0's
-	while [ -n "$ROOM" ] && [ "$(echo ${ROOM:-1} | cut -b1)" = "0" ]; do
+	while [ "$ROOM" ] && [ "0" = "$(echo ${ROOM:-1} | cut -b1)" ]; do
 		ROOM=${ROOM#0}
 	done
 
 	# 1 ≤ room number ≤ 999
 	if [ $ROOM -gt 999 ]; then
-		echo "E: room number too big!" >&2
-		echo
+		echo "$NAME: room number too big." >&2
 		return 402
 	fi
 }
@@ -221,9 +216,9 @@ ck_room()
 # check owner
 ck_owner()
 {
-	if [ -z "$OWNER" ] || echo "$OWNER" | grep --color '[^-. a-zA-Z]'; then
-		echo "E: invalid owner name!" >&2
-		echo
+	if [ -z "$OWNER" ] || \
+	   echo "$OWNER" | grep --color '[^-. a-zA-Z]' >&2; then
+		echo "$NAME: invalid owner name." >&2
 		return 501
 	fi
 }
@@ -232,36 +227,26 @@ ck_owner()
 ck_info()
 {
 	if [ -z "$INFO" ]; then
-		echo "E: no host details!" >&2
-		echo
+		echo "$NAME: no host info." >&2
 		return 601
 	fi
 }
 
-# scan for the next IP address
-next_ipaddr()
+# scan for the next free IP address (> .20)
+ipaddr_next()
 {
-	# old revzone serial number
-	RSERIAL=$(sed -n "s|^\s*\([0-9]\+\)\s*; serial$|\1|p" $DIRZONE/$REVZONE)
-	if [ -z "$RSERIAL" ]; then
-		echo "E: DNS zone '$REVZONE' has no serial number!" >&2
-		echo
-		exit 104
-	fi
+	# 10.[VLAN+X].YZ.?, where XYZ = room number
+	IPADDRTWO=$((VLAN + ROOM/100))
+	IPADDRTHREE=$((ROOM - ROOM/100*100))
 
-	IPADDR2=$((VLAN + ROOM/100))
-	IPADDR3=$((ROOM - ROOM/100*100))
-
-	IPADDR=10.${IPADDR2}.${IPADDR3}
-	LAST=19
-	NEXT=20				# the least significat IPv4 field
+	IPADDR=10.$IPADDRTWO.$IPADDRTHREE
+	NEXT=20					# the least significat IPv4 field
 	while [ $NEXT -lt 255 ]; do
-		if grep -qw "${IPADDR}\.${NEXT}" $DIRZONE/$DOMAIN || \
-		   grep -qw "^${NEXT}\.${IPADDR3}\.${IPADDR2}" $DIRZONE/$REVZONE || \
-		   [ "$(dig +short -x ${IPADDR}.${NEXT})" ] || \
-		   ping -c1 ${IPADDR}.${NEXT} >/dev/null || \
-		   ip ne li ${IPADDR}.${NEXT} | grep -q lladdr; then
-			LAST=$NEXT
+		if grep -qw "$IPADDR\.$NEXT" $DIRZONE/$DOMAIN || \
+		   grep -qw "^;\?$NEXT\.$IPADDRTHREE\.$IPADDRTWO" $DIRZONE/$REVZONE || \
+		   [ "$(dig +short -x $IPADDR.$NEXT)" ] || \
+		   ping -qc1 $IPADDR.$NEXT >/dev/null || \
+		   ip neigh list $IPADDR.$NEXT | grep -q lladdr; then
 			NEXT=$((NEXT+1))
 			continue
 		else
@@ -271,174 +256,172 @@ next_ipaddr()
 
 	# all IP addresses in use?
 	if [ $NEXT -eq 255 ]; then
-		echo "E: no more free IP addresses?!" >&2
-		echo
-		exit 105
+		echo "$NAME: no more free IP addresses." >&2
+		exit 103
 	fi
-	IPLAST=${IPADDR}.${LAST}
-	IPADDR=${IPADDR}.${NEXT}
+	LAST=$((NEXT-1))
+	IPLAST=$IPADDR.$LAST
+	IPADDR=$IPADDR.$NEXT
 }
 
 # register new host on DNS zone
-register_host()
+host_add()
 {
 	sed "s|$ZSERIAL|$NSERIAL|" -i~$ZSERIAL $DIRZONE/$DOMAIN
-	# 20 is first ↦ no previous IP addr
-	if [ $NEXT -gt 20 ]; then
-		sed "s|^.*\s\+$IPLAST\s*$|&\n$HOST\t\t\tA\t$IPADDR|" -i $DIRZONE/$DOMAIN
+	if grep -q "\s$IPLAST\s*$" $DIRZONE/$DOMAIN; then
+		sed "s|\s$IPLAST\s*$|&\n$HOST\t\t\tA\t$IPADDR|" -i $DIRZONE/$DOMAIN
 	else
 		echo "$HOST\t\t\tA\t$IPADDR" >> $DIRZONE/$DOMAIN
 	fi
 }
 
 # register new IP address on rDNS zone
-register_ipaddr()
+ipaddr_add()
 {
 	sed "s|$RSERIAL|$NSERIAL|" -i~$ZSERIAL $DIRZONE/$REVZONE
-	if grep -qw "^${LAST}\.${IPADDR3}\.${IPADDR2}" $DIRZONE/$REVZONE; then
-		sed "s|^${LAST}\.${IPADDR3}\.${IPADDR2}\s.*$|&\n${NEXT}\.${IPADDR3}\.${IPADDR2}\t\tPTR\t${HOST}.${DOMAIN}.|" -i $DIRZONE/$REVZONE
+	REVLAST="$LAST.$IPADDRTHREE.$IPADDRTWO"
+	REVNEXT="$NEXT.$IPADDRTHREE.$IPADDRTWO"
+	if grep -q "^;\?$REVLAST\s.*$" $DIRZONE/$REVZONE; then
+		sed "s|^;\?$REVLAST\s.*$|&\n$REVNEXT\t\tPTR\t$HOST.$DOMAIN.|" -i $DIRZONE/$REVZONE
 	else
-		echo "${NEXT}.${IPADDR3}.${IPADDR2}\t\tPTR\t${HOST}.${DOMAIN}." >> $DIRZONE/$REVZONE
+		echo "$REVNEXT\t\tPTR\t$HOST.$DOMAIN." >> $DIRZONE/$REVZONE
 	fi
 }
 
-# register new group:macaddr:host pair on DHCP
-register_dhcp()
+# add a new MACADDR:HOST entry in a DHCP group
+dhcp_add()
 {
 	[ -e "$FILEDHCP~$ZSERIAL" ] || cp -a $FILEDHCP $FILEDHCP~$ZSERIAL
+	LASTHOST=$(sed -n "s|^\([a-z0-9-]\+\)\s\+A\s$IPLAST\s*$|\1|p" $DIRZONE/$DOMAIN)
+
 	#Group | MAC address | Host | Owner | Office | Info
-	if [ $NEXT -gt 20 ]; then
-		LASTHOST=$(sed -n "s|^\([a-z0-9-]\+\)\s\+A\s$IPLAST\s*$|\1|p" $DIRZONE/$DOMAIN)
-		sed "s%^.*|${LASTHOST}|.*$%&\n$GROUP|$MACADDR|$HOST|$OWNER|$ROOM|$INFO%" -i $FILEDHCP
+	if [ "$LASTHOST" ] && \
+	   grep -q "|$LASTHOST|" $FILEDHCP; then
+		sed "s%|$LASTHOST|.*$%&\n$GROUP|$MACADDR|$HOST|$OWNER|$ROOM|$INFO%" -i $FILEDHCP
 	else
 		echo "$GROUP|$MACADDR|$HOST|$OWNER|$ROOM|$INFO" >> $FILEDHCP
 	fi
 }
 
 
-##########==========  main()  ==========##########
-if [ $BATCH -eq 0 ]; then
-	# check host
-	set +u
-	if [ "$HOST" ]; then
-		set -u
-		ck_host "$HOST" || unset HOST
-	fi
-	set +u
-	if [ -z "$HOST" ]; then
-		set -u
-		while true; do
-			echo -n "Enter new host name: "
-			read HOST
-			ck_host "$HOST" || continue
-			break
-		done
-	fi
-
-	# check group
-	set +u
-	if [ "$GROUP" ]; then
-		set -u
-		ck_group "$GROUP" || unset GROUP
-	fi
-	set +u
-	if [ -z "$GROUP" ]; then
-		set -u
-		while true; do
-			echo -n "Enter group name (vlan): "
-			read GROUP
-			ck_group $GROUP || continue
-			break
-		done
-	fi
-
-	# check macaddr
-	set +u
-	if [ "$MACADDR" ]; then
-		set -u
-		ck_macaddr "$MACADDR" || unset MACADDR
-	fi
-	set +u
-	if [ -z "$MACADDR" ]; then
-		set -u
-		while true; do
-			echo -n "Enter MAC address: "
-			read MACADDR
-			ck_macaddr $MACADDR || continue
-			break
-		done
-	fi
-
-	# check room
-	set +u
-	if [ "$ROOM" ]; then
-		set -u
-		ck_room "$ROOM" || unset ROOM
-	fi
-	set +u
-	if [ -z "$ROOM" ]; then
-		set -u
-		while true; do
-			echo -n "Enter room number: "
-			read ROOM
-			ck_room $ROOM || continue
-			break
-		done
-	fi
-
-	# check owner
-	set +u
-	if [ "$OWNER" ]; then
-		set -u
-		ck_owner "$OWNER" || unset OWNER
-	fi
-	set +u
-	if [ -z "$OWNER" ]; then
-		set -u
-		while true; do
-			echo -n "Enter owner name: "
-			read OWNER
-			ck_owner $OWNER || continue
-			break
-		done
-	fi
-
-	# check info
-	set +u
-	if [ -z "$INFO" ]; then
-		set -u
-		while true; do
-			echo -n "Enter host details: "
-			read INFO
-			ck_info $INFO || continue
-			break
-		done
-	fi
-	echo
-	echo "$DESCRIPTION .."
-	echo
-else
-	ck_info
-	ck_owner
-	ck_room
-	ck_group			# always before macaddr check
-	ck_macaddr
-	ck_host
+#===================  main()  ===================#
+exec 7<> $DIRZONE/$DOMAIN
+exec 8<> $DIRZONE/$REVZONE
+exec 9<> $FILEDHCP
+if ! flock --nonblock 7 || \
+   ! flock --nonblock 8 || \
+   ! flock --nonblock 9; then
+	echo "$NAME: cannot lock files, try again later." >&2
+	exit 1
 fi
 
-set -u
-next_ipaddr
+# old zone serial number
+ZSERIAL=$(sed -n "s|^\s*\([0-9]\+\)\s*; serial$|\1|p" $DIRZONE/$DOMAIN)
+if [ -z "$ZSERIAL" ]; then
+	echo "$NAME: DNS zone '$DOMAIN' has no serial number." >&2
+	exit 2
+fi
+
+# old revzone serial number
+RSERIAL=$(sed -n "s|^\s*\([0-9]\+\)\s*; serial$|\1|p" $DIRZONE/$REVZONE)
+if [ -z "$RSERIAL" ]; then
+	echo "$NAME: DNS zone '$REVZONE' has no serial number." >&2
+	exit 2
+fi
+
+# new serial number for all DNS zones
 NSERIAL="$(date '+%Y%m%d')00"
 [ $ZSERIAL -lt $NSERIAL ] || NSERIAL=$((ZSERIAL + 1))
 [ $RSERIAL -lt $NSERIAL ] || NSERIAL=$((RSERIAL + 1))
+
+if [ -z "$HOST" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter host name: "
+		read HOST
+		ck_host && break
+		echo
+	done
+	echo
+else
+	ck_host || exit $?
+fi
+
+if [ -z "$GROUP" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter group name (vlan): "
+		read GROUP
+		ck_group && break
+		echo
+	done
+	echo
+else
+	ck_group || exit $?			# always before macaddr check
+fi
+
+if [ -z "$MACADDR" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter MAC address: "
+		read MACADDR
+		ck_macaddr && break
+		echo
+	done
+	echo
+else
+	ck_macaddr || exit $?
+fi
+
+if [ -z "$ROOM" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter room number: "
+		read ROOM
+		ck_room && break
+		echo
+	done
+	echo
+else
+	ck_room || exit $?
+fi
+
+if [ -z "$OWNER" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter owner name: "
+		read OWNER
+		ck_owner && break
+		echo
+	done
+	echo
+else
+	ck_owner || exit $?
+fi
+
+if [ -z "$INFO" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter host info: "
+		read INFO
+		ck_info && break
+		echo
+	done
+	echo
+else
+	ck_info || exit $?
+fi
+ipaddr_next
 
 echo "Host : $HOST ($MACADDR)"
 echo "Group: $GROUP (VLAN id $VLAN)"
 echo "Room#: $ROOM"
 echo "Owner: $OWNER"
 echo "Info : $INFO"
-
-register_host
-register_ipaddr
-register_dhcp
+host_add
+ipaddr_add
+dhcp_add
+flock --unlock 7
+flock --unlock 8
+flock --unlock 9
 :
