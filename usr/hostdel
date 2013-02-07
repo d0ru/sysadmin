@@ -1,0 +1,170 @@
+#!/bin/sh
+# Unregister an old host from local network.
+# (DNS domain and revzone, DHCP)
+# Author:   Teodor 'døru' MICU <mteodor@gmail.com>
+# Revision: February 7, 2013
+#
+# Location: /usr/local/sbin/
+
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+set -eu
+
+NAME="$(basename $0)"
+
+# read custom configuration file if it's present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# set internal variables to their default values (if unset)
+DIRZONE=${DIRZONE:-/etc/bind/zones}
+DOMAIN=${DOMAIN:-$(dnsdomainname)}
+REVZONE=${REVZONE:-10.in-addr.arpa}
+FILEDHCP=${FILEDHCP:-/etc/dhcp/hosts.list}
+FILEVLAN=${FILEVLAN:-/proc/net/vlan/config}
+
+# must have read+write perms
+[ -r "$DIRZONE/$DOMAIN" -a -w "$DIRZONE/$DOMAIN" ] || exit 1
+[ -r "$DIRZONE/$REVZONE" -a -w "$DIRZONE/$REVZONE" ] || exit 1
+[ -r "$FILEDHCP" -a -w "$FILEDHCP" ] || exit 1
+
+# print usage instructions
+usage()
+{
+	echo "Usage: $NAME [HOST]"
+}
+
+# init vars to make "set -u" happy
+HOST=
+
+# getopt
+while [ $# -gt 0 ]; do
+	case "$1" in
+	"-h" | "--help" )
+		usage
+		exit 0
+		;;
+	-* )
+		echo "$NAME: option '$1' is not recognized." >&2
+		echo
+		usage
+		exit 9
+		;;
+	* )
+		if [ "$HOST" ]; then
+			echo "$NAME: more than one host name." >&2
+			echo
+			usage
+			exit 100
+		fi
+		HOST="$1"
+		;;
+	esac
+	shift
+done
+
+# check host
+ck_host()
+{
+	# RFC 952
+	if [ -z "$HOST" ] || \
+	   echo "$HOST" | grep --color '^-' >&2 || \
+	   echo "$HOST" | grep --color '[^0-9a-zA-Z-]' >&2; then
+		echo "$NAME: invalid host name." >&2
+		return 101
+	fi
+
+	# CNAME/NS host.domain.
+	if grep -q "[A-Z]\s$HOST\s*$" $DIRZONE/$DOMAIN; then
+		echo "$NAME: host „$HOST” is protected by light." >&2
+		exit 102
+	fi
+}
+
+# unregister old host from DNS zone
+host_del()
+{
+	if grep -q "^\s*$HOST\s\+A" $DIRZONE/$DOMAIN; then
+		sed "s|$ZSERIAL|$NSERIAL|" -i~$ZSERIAL $DIRZONE/$DOMAIN
+		sed "/^\s*$HOST\s\+A/d" -i $DIRZONE/$DOMAIN
+		echo "- removed host record from DNS zone '$DOMAIN'"
+	else
+		echo "~ no host record was found in DNS zone '$DOMAIN'"
+	fi
+}
+
+# unregister old IP address from rDNS zone
+ipaddr_del()
+{
+	if grep -q "PTR\s$HOST\.$DOMAIN" $DIRZONE/$REVZONE; then
+		sed "s|$RSERIAL|$NSERIAL|" -i~$ZSERIAL $DIRZONE/$REVZONE
+		sed "/PTR\s$HOST\.$DOMAIN/d" -i $DIRZONE/$REVZONE
+		echo "- removed IP address record from DNS zone '$REVZONE'"
+	else
+		echo "~ no IP address record was found in DNS zone '$REVZONE'"
+	fi
+}
+
+# remove old host from any DHCP group
+dhcp_del()
+{
+	if grep -q "|$HOST|" $FILEDHCP; then
+		[ -e "$FILEDHCP~$ZSERIAL" ] || cp -a $FILEDHCP $FILEDHCP~$ZSERIAL
+		GROUP=$(sed -n "s%^\([^#].*\)|.*|$HOST|.*$%\1%p" $FILEDHCP)
+		sed "/|$HOST|/d" -i $FILEDHCP
+		echo "- removed host entry from DHCP group „${GROUP:-#none}”"
+	else
+		echo "~ no host entry was found in DHCP configuration"
+	fi
+}
+
+
+#===================  main()  ===================#
+exec 7<> $DIRZONE/$DOMAIN
+exec 8<> $DIRZONE/$REVZONE
+exec 9<> $FILEDHCP
+if ! flock --nonblock 7 || \
+   ! flock --nonblock 8 || \
+   ! flock --nonblock 9; then
+	echo "$NAME: cannot lock files, try again later." >&2
+	exit 1
+fi
+
+# old zone serial number
+ZSERIAL=$(sed -n "s|^\s*\([0-9]\+\)\s*; serial$|\1|p" $DIRZONE/$DOMAIN)
+if [ -z "$ZSERIAL" ]; then
+	echo "$NAME: DNS zone '$DOMAIN' has no serial number." >&2
+	exit 2
+fi
+
+# old revzone serial number
+RSERIAL=$(sed -n "s|^\s*\([0-9]\+\)\s*; serial$|\1|p" $DIRZONE/$REVZONE)
+if [ -z "$RSERIAL" ]; then
+	echo "$NAME: DNS zone '$REVZONE' has no serial number." >&2
+	exit 2
+fi
+
+# new serial number for all DNS zones
+NSERIAL="$(date '+%Y%m%d')00"
+[ $ZSERIAL -lt $NSERIAL ] || NSERIAL=$((ZSERIAL + 1))
+[ $RSERIAL -lt $NSERIAL ] || NSERIAL=$((RSERIAL + 1))
+
+if [ -z "$HOST" ]; then
+	# interactive execution
+	while true; do
+		echo -n "Enter host name: "
+		read HOST
+		ck_host && break
+		echo
+	done
+	echo
+else
+	ck_host || exit $?
+fi
+
+echo "Host: $HOST.$DOMAIN"
+host_del
+ipaddr_del
+dhcp_del
+flock --unlock 7
+flock --unlock 8
+flock --unlock 9
+:
