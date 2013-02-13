@@ -1,7 +1,7 @@
 #!/bin/sh
 # Update all configuration files for a new HOSTNAME.
 # Author:   Teodor 'døru' MICU <mteodor@gmail.com>
-# Revision: December 17, 2012
+# Revision: February 13, 2013
 #
 # Location: /usr/local/sbin/
 
@@ -40,13 +40,13 @@ fi
 echo
 grep -h -w $NHOST /etc/hostname /etc/hosts
 hostname $(cat /etc/hostname)
-rm -f /var/lib/changetrack/etc:ssh:ssh_host_[dr]sa_key.*
-rm -vf /etc/ssh/ssh_host_[dr]sa_key*
+rm -f /var/lib/changetrack/etc:ssh:ssh_host_[a-z]*_key.*
+rm -vf /etc/ssh/ssh_host_[a-z]*_key*
 echo
 DEBCONF_FRONTEND=noninteractive dpkg-reconfigure openssh-server
 
 UDEVCFG=/etc/udev/rules.d/70-persistent-net.rules
-if grep -q "$ETHER" $UDEVCFG; then
+if [ -f $UDEVCFG ] && grep -q "$ETHER" $UDEVCFG; then
 	sed "/ATTR{address}==\"$ETHER\", .* NAME=\"$IFACE\"/d" -i $UDEVCFG
 	tail -1 $UDEVCFG | grep -q '^# PCI device' && \
 		sed '$d' -i $UDEVCFG		# șterge ultima linie
@@ -54,9 +54,11 @@ if grep -q "$ETHER" $UDEVCFG; then
 		sed '$d' -i $UDEVCFG
 	tail -1 $UDEVCFG | grep -q '^\s*$' && \
 		sed '$d' -i $UDEVCFG
+
+	grep "$ETHER" $UDEVCFG || :
+	grep "$IFACE" $UDEVCFG || :
 fi
-grep "$ETHER" $UDEVCFG || :
-grep "$IFACE" $UDEVCFG || :
+
 echo
 echo 'The system is going down for reboot in 26 seconds!'
 echo -n "Press CTRL^C to abort .."
