@@ -75,7 +75,7 @@ Fișierul de configurare `/etc/bacula/bacula-fd.conf` ar trebui să conțină:
     # Send all messages except skipped files back to Director
     Messages {
       Name = Standard
-      Append = "/var/log/bacula/log" = all, !skipped
+      Append = "/var/log/bacula/log" = all, !skipped, !restored
       Director = <BACULAMASTER>-dir = all, !skipped, !restored
     }
 
