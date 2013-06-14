@@ -2,7 +2,7 @@
 # Register a new host on local network.
 # (DNS domain and revzone, DHCP)
 # Author:   Teodor 'døru' MICU <mteodor@gmail.com>
-# Revision: February 12, 2013
+# Revision: June 14, 2013
 #
 # Location: /usr/local/sbin/
 
@@ -33,6 +33,7 @@ usage()
 	echo "Usage: $NAME [options] [HOST]"
 	echo
 	echo "Options:"
+	echo "  -a, --addr, --ipaddr A.B.C.D  force IP address assignment"
 	echo "  -g, --group GROUP             owner's working group (VLAN)"
 	echo "  -h, --help                    display this help message and exit"
 	echo "  -i, --info TEXT               short host description"
@@ -43,6 +44,7 @@ usage()
 
 # init vars to make "set -u" happy
 HOST=
+IPADDR=
 GROUP=
 MACADDR=
 ROOM=
@@ -52,6 +54,16 @@ INFO=
 # getopt
 while [ $# -gt 0 ]; do
 	case "$1" in
+	"-a" | "--addr" | "--ipaddr" )
+		if [ $# -lt 2 ]; then
+			echo "$NAME: no IP address." >&2
+			echo
+			usage
+			exit 120
+		fi
+		shift
+		IPADDR="$1"
+		;;
 	"-g" | "--group" )
 		if [ $# -lt 2 ]; then
 			echo "$NAME: no group name." >&2
@@ -141,6 +153,51 @@ ck_host()
 	   grep --color "|$HOST|" $FILEDHCP; then
 		echo "$NAME: host is already in use." >&2
 		return 102
+	fi
+}
+
+# check IP address
+ck_ipaddr()
+{
+	if [ -z "$IPADDR" ] || \
+	   echo "$IPADDR" | grep --color '[^0-9.]' >&2; then
+		echo "$NAME: invalid IP address." >&2
+		return 121
+	fi
+
+	if [ $(echo "$IPADDR" | cut -d. -f1) -ne 10 ]; then
+		echo "$NAME: invalid subnet address." >&2
+		return 122
+	fi
+
+	if [ $(echo -n "$IPADDR" | wc -c) -gt 15 ]; then
+		echo "$NAME: invalid IP address length." >&2
+		return 123
+	fi
+
+	if [ $(echo "$IPADDR" | awk -F. '{ print NF }') -ne 4 ]; then
+		echo "$NAME: invalid IP address syntax." >&2
+		return 124
+	fi
+
+	# 10.TWO.THREE.NEXT
+	IPADDRTWO=$(echo "$IPADDR" | cut -d. -f2)
+	IPADDRTHREE=$(echo "$IPADDR" | cut -d. -f3)
+	NEXT=$(echo "$IPADDR" | cut -d. -f4)
+
+	if [ $IPADDRTWO -gt 255 ] || \
+	   [ $IPADDRTHREE -gt 255 ] || \
+	   [ $NEXT -gt 255 ]; then
+		echo "$NAME: invalid IP address." >&2
+		return 125
+	fi
+	LAST=$((NEXT-1))
+	IPLAST=10.$IPADDRTWO.$IPADDRTHREE.$LAST
+
+	if grep -qw "$IPADDR" $DIRZONE/$DOMAIN || \
+	   grep -qw "^;\?$NEXT\.$IPADDRTHREE\.$IPADDRTWO" $DIRZONE/$REVZONE; then
+		echo "$NAME: IP address is already registered." >&2
+		return 126
 	fi
 }
 
@@ -256,7 +313,7 @@ ipaddr_next()
 	# all IP addresses in use?
 	if [ $NEXT -eq 255 ]; then
 		echo "$NAME: no more free IP addresses." >&2
-		exit 103
+		exit 199
 	fi
 	LAST=$((NEXT-1))
 	IPLAST=$IPADDR.$LAST
@@ -410,9 +467,14 @@ if [ -z "$INFO" ]; then
 else
 	ck_info || exit $?
 fi
-ipaddr_next
 
-echo "Host : $HOST ($MACADDR)"
+if [ -z "$IPADDR" ]; then
+	ipaddr_next
+else
+	ck_ipaddr || exit $?
+fi
+
+echo "Host : $HOST ($MACADDR, $IPADDR)"
 echo "Group: $GROUP (VLAN id $VLAN)"
 echo "Room#: $ROOM"
 echo "Owner: $OWNER"
