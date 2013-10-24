@@ -26,6 +26,27 @@ Notă: **apt** este un alias pentru `apt-get --purge` dar poți utiliza `aptitud
 
     install -v -o spamass-milter -g spamass-milter -d /var/lib/spamass-milter
 
+#### Corectează prioritatea serviciului «spamass-milter»
+
+Pentru a porni [automat dupa serviciul *spamd*][714854], adaugă fișierul `spamass-milter` în directorul `/etc/insserv/overrides/` cu aceste proprietăți:
+
+[714854]: http://bugs.debian.org/714854
+
+    #!/bin/sh
+    ### BEGIN INIT INFO
+    # Provides:          spamass-milter
+    # Required-Start:    $syslog $local_fs $remote_fs
+    # Required-Stop:     $syslog $local_fs $remote_fs
+    # Should-Start:      spamassassin
+    # Should-Stop:       spamassassin
+    # Default-Start:     2 3 4 5
+    # Default-Stop:      0 1 6
+    ### END INIT INFO
+
+Actualizează prioritățile implicite de pornire a serviciului:
+
+    update-rc.d spamass-milter defaults
+
 
 Configurare serviciu
 --------------------
@@ -38,7 +59,7 @@ Configurare serviciu
 
 Editează fișierul `/etc/default/spamass-milter` să conțină:
 
-    OPTIONS="-I -i 127.0.0.1,IP_addr,SUBNET -m -r 20 -- --headers"
+    OPTIONS="-I -i 127.0.0.1,IP_addr,SUBNET -m -r 14 -- --headers"
 
     SOCKET="/var/spool/postfix/run/spamass-milter/mux"
     SOCKETOWNER="spamass-milter:spamass-milter"
