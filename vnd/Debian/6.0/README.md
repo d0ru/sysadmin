@@ -3,7 +3,11 @@ Debian Linux 6.0.10 (nume de cod „squeeze”)
 
 Debian 6.0 a fost lansat inițial la 6 februarie, 2011.
 
+Ultima versiune Debian 6.0.10 a fost lansată la 19 iulie 2014. Totuși, a fost anunțată o inițiativă [Debian 6 LTS][lts] ce extinde suportul până în februarie 2016 — limitat la două arhitecturi și mai puține pachete.
+
 Debian 6.0 a fost înlocuit de Debian 7 („wheezy”).
+
+[lts]: https://www.debian.org/News/2014/20140616
 
 
 Instalare host
@@ -79,7 +83,7 @@ Configurare host
 
 ### Configurare «APT» — administratorul de pachete
 
-Editează lista repozitoriilor de pachete din `/etc/apt/sources.list` pentru versiunea curentă stabilă:
+Editează lista repozitoriilor de pachete din `/etc/apt/sources.list` pentru vechea versiunea stabilă:
 
     # [Debian GNU/Linux 6.0.6 _Squeeze_ 2012/11/20]
     # deb http://ftp.ro.debian.org/debian squeeze main
@@ -125,7 +129,7 @@ Setează evenimente periodice de întreținere a administratorului de pachete **
     APT::Periodic::Update-Package-Lists "1";
     __EOF__
 
-Acestea semnifică actualizarea automată a listei pachetelor din repozitoriile Debian, ștergerea pachetelor mai vechi de 60 de zile și descărcarea pachetelor noi (fără instalare).
+Acești parametrii sunt pentru actualizarea automată a listei pachetelor din repozitoriile Debian, ștergerea pachetelor mai vechi de 60 de zile și descărcarea pachetelor noi (dar fără instalare).
 
 Verifică dacă mai sunt disponibile alte actualizări de pachete:
 
@@ -135,7 +139,7 @@ Notă: **apt** este un alias pentru `apt-get --purge` dar poți utiliza `aptitud
 
 ### Configurare «GRUB2» — încărcătorul sistemului de operare la „boot”
 
-Editează fișierul `/etc/default/grub` pentru adăugare parametrii:
+Editează fișierul `/etc/default/grub` și adăugă parametrii:
 
     GRUB_CMDLINE_LINUX_DEFAULT="quiet"
     GRUB_CMDLINE_LINUX="panic=1200 ipv6.disable=1"
@@ -185,7 +189,7 @@ Instaleaza kernel-ul Linux din următoarea versiune stabilă:
 
     HOSTu:~# sed -i "s|^\(GRUB_DEFAULT\)=.*$|\1=2|" /etc/default/grub
 
-Comanda `sed` doar setează selecția implicită a kernel-ului din versiunea stabilă.
+Comanda `sed` doar setează selecția implicită a kernel-ului din repozitoriul principal „squeeze”.
 Alege meta-pachetul corespunzător 32 biți sau 64 biți:
 
     HOSTu:~# apt -t squeeze-backports install linux-image-amd64    # 64 biți
@@ -245,7 +249,7 @@ Doar pentru poarta de rețea:
     __EOF__
 
 
-### Nume host
+### Setează nume host complet (+domeniu)
 
     D:~# sed "s|^$(hostname -s)$|$(hostname -f)|" -i /etc/hostname
 
@@ -267,7 +271,7 @@ Activează fixarea automată a problemelor detectate la verificarea sistemului d
 
 ### Configurare serviciu „syslog”
 
-Activează un jurnal cu toate mesajele de sistem, foarte util pentru depanare sistem la consolă (Alt+F12). Pentru sistemele „headless” (ex. SPARC) aceast lucru nu este posibil.
+Activează un jurnal cu toate mesajele de sistem, foarte util pentru depanare sistem la consolă (**Alt+F12**). Sistemele „headless” (ex. SPARC) nu au consolă (ecran și tastatură), deci această configurație nu este de folos.
 
     cat >> /etc/rsyslog.d/tty12.conf <<__EOF__
     *.*                             /dev/tty12
@@ -314,18 +318,18 @@ Configurare unelte
 
 * „changetrack” — alertă modificări în sistem
 
-* „rkhunter” — alertă bresă de securitate în sistem
+* „rkhunter” — alertă breșă de securitate în sistem
 
 * „smartmontools” — monitorizare disk
 
-* „nut-client” — monitorizare **UPS**
+* „nut-client” — monitorizare UPS
 
-* „ntpdate” — sincronizare dată și timp
+* „ntpdate” — sincronizare dată și timp prin NTP
 
 * „tune2fs” — verificarea periodică a sistemului de fișiere
 
 * „unattended-upgrades” — actualizare automată a pachetelor software
 
-Configurarea inițială a sistemului (fară **X**) este completă!
+Configurarea inițială a sistemului (fară mediul grafic **X**) este completă!
 
     # update-grub && reboot
