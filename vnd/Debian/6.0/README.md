@@ -1,5 +1,5 @@
-Debian Linux 6.0.9 (nume de cod „squeeze”)
-==========================================
+Debian Linux 6.0.10 (nume de cod „squeeze”)
+===========================================
 
 Debian 6.0 a fost lansat inițial la 6 februarie, 2011.
 
@@ -205,7 +205,7 @@ Alege meta-pachetul corespunzător 32 biți sau 64 biți:
 
 Pentru procesoarele *AMD* instalează pachetul `amd64-microcode`.
 
-#### Șterge legăturile simbolice din directorul rădăcină (eng. „root”)
+#### Șterge legăturile simbolice din directorul rădăcină
 
     sed "s|^\(do_symlinks =\).*$|\1 no|" -i /etc/kernel-img.conf
     unlink /initrd.img
@@ -213,7 +213,7 @@ Pentru procesoarele *AMD* instalează pachetul `amd64-microcode`.
     unlink /vmlinuz
     unlink /vmlinuz.old
 
-#### Configurare parametrii kernel via «sysctl»
+### Configurare parametrii kernel via «sysctl»
 
     cat >> /etc/sysctl.d/local.conf <<__EOF__
     net.ipv4.conf.default.accept_redirects = 0
@@ -255,15 +255,15 @@ Dezactivează depunerea de statistici „popcon” via email.
 
     echo "MAILTO=" >> /etc/popularity-contest.conf
 
-#### -- #etc:default:rcS
+##### -- #etc:default:rcS
 
 Activează fixarea automată a problemelor detectate la verificarea sistemului de fișiere.
 
     sed "s|^#*\(FSCKFIX\)=.*$|\1=yes|" -i /etc/default/rcS
 
-#### -- #etc:default:tmpfs
+##### -- #etc:default:tmpfs
 
-#### -- #etc:fstab
+##### -- #etc:fstab
 
 ### Configurare serviciu „syslog”
 
@@ -278,6 +278,7 @@ Setează un jurnal separat doar pentru mesajele trimise de serviciul „Cron”.
     CFGFILE=/etc/rsyslog.conf
     sed 's|\(authpriv.none\)[[:space:]]*\(-/var/log/syslog\)|\1;cron.none\t\2|' -i $CFGFILE
     sed 's|^#*\(cron.*cron.log\)|\1|' -i $CFGFILE
+
 
 Configurare unelte
 ------------------
@@ -309,23 +310,21 @@ Configurare unelte
     chmod -v a+r /etc/skel/.vimrc
     cp -va /etc/skel/.vimrc ~/.vimrc
 
-#### -- ntpdate
-
-#### -- NFSv3
-
-#### -- tune2fs
-
 ### Unelte opționale
 
-* changetrack
+* „changetrack” — alertă modificări în sistem
 
-* rkhunter
+* „rkhunter” — alertă bresă de securitate în sistem
 
-* smartmontools
+* „smartmontools” — monitorizare disk
 
-* monitorizare **UPS**
+* „nut-client” — monitorizare **UPS**
 
-* unattended-upgrades
+* „ntpdate” — sincronizare dată și timp
+
+* „tune2fs” — verificarea periodică a sistemului de fișiere
+
+* „unattended-upgrades” — actualizare automată a pachetelor software
 
 Configurarea inițială a sistemului (fară **X**) este completă!
 
