@@ -1,7 +1,7 @@
 Debian Linux 6.0.10 (nume de cod „squeeze”)
 ===========================================
 
-Debian 6.0 a fost lansat inițial la 6 februarie, 2011.
+Debian 6.0 a fost lansat inițial la 6 februarie 2011.
 
 Ultima versiune Debian 6.0.10 a fost lansată la 19 iulie 2014. Totuși, a fost anunțată o inițiativă [Debian 6 LTS][lts] ce extinde suportul până în februarie 2016 — limitat la două arhitecturi și mai puține pachete.
 
@@ -99,7 +99,7 @@ Editează lista repozitoriilor de pachete din `/etc/apt/sources.list` pentru vec
 
     # backports from sid/testing
     deb http://ftp.de.debian.org/debian-backports  squeeze-backports  main contrib non-free
-    deb http://backports.debian.org/debian-backports  squeeze-backports  main contrib non-free
+    deb http://backports.debian.org/debian-backports  squeeze-backports  main
 
 Setează prioritatea pachetelor din principalele repozitorii suplimentare:
 
@@ -219,7 +219,7 @@ Pentru procesoarele *AMD* instalează pachetul `amd64-microcode`.
 
 ### Configurare parametrii kernel via «sysctl»
 
-    cat >> /etc/sysctl.d/local.conf <<__EOF__
+    cat > /etc/sysctl.d/local.conf <<__EOF__
     net.ipv4.conf.default.accept_redirects = 0
     net.ipv6.conf.default.accept_redirects = 0
     net.ipv4.conf.default.secure_redirects = 0
@@ -238,36 +238,29 @@ Pentru procesoarele *AMD* instalează pachetul `amd64-microcode`.
     net.ipv4.conf.all.log_martians = 1
     __EOF__
     
-    cat >> /etc/sysctl.d/domainname.conf <<__EOF__
+    cat > /etc/sysctl.d/domainname.conf <<__EOF__
     kernel.domainname = $(dnsdomainname)
     __EOF__
 
 Doar pentru poarta de rețea:
 
-    cat >> /etc/sysctl.d/ip_forward.conf <<__EOF__
+    cat > /etc/sysctl.d/ip_forward.conf <<__EOF__
     net.ipv4.ip_forward = 1
     __EOF__
-
 
 ### Setează nume host complet (+domeniu)
 
     D:~# sed "s|^$(hostname -s)$|$(hostname -f)|" -i /etc/hostname
 
-#### Statistici pachete via „popcon”
-
-Dezactivează depunerea de statistici „popcon” via email.
-
-    echo "MAILTO=" >> /etc/popularity-contest.conf
-
-##### -- #etc:default:rcS
+### Init [1]
 
 Activează fixarea automată a problemelor detectate la verificarea sistemului de fișiere.
 
     sed "s|^#*\(FSCKFIX\)=.*$|\1=yes|" -i /etc/default/rcS
 
-##### -- #etc:default:tmpfs
+##### -- /etc/default/tmpfs
 
-##### -- #etc:fstab
+##### -- /etc/fstab
 
 ### Configurare serviciu „syslog”
 
@@ -282,6 +275,12 @@ Setează un jurnal separat doar pentru mesajele trimise de serviciul „Cron”.
     CFGFILE=/etc/rsyslog.conf
     sed 's|\(authpriv.none\)[[:space:]]*\(-/var/log/syslog\)|\1;cron.none\t\2|' -i $CFGFILE
     sed 's|^#*\(cron.*cron.log\)|\1|' -i $CFGFILE
+
+#### Statistici pachete via „popcon”
+
+Dezactivează depunerea de statistici „popcon” via email.
+
+    echo "MAILTO=" >> /etc/popularity-contest.conf
 
 
 Configurare unelte
